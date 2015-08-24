@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+
+KARI_USER_ID = 789149
+PROSPECTING_STAGE_ID = 64
+
+needs_columns = [
+  "Place",
+  "State",
+  "Contact full name",
+  "Contact email",
+  "Contact phone",
+  "Contact title",
+  "Form URL"
+]
+
+require 'csv'
+require 'dotenv'
+Dotenv.load
+
+contents = File.read(ARGV[0])
+csv = CSV.parse(contents, headers: true)
+
+headers = csv.headers.to_a
+rows = csv.map(&:values_at).to_a
+
+missing_columns = needs_columns - headers
+
+if missing_columns.length > 0
+  fail "Missing columns: #{missing_columns.join(', ')}"
+end
+
+puts "Importing #{rows.length} rows..."
+
+require 'pipedrive-ruby'
+Pipedrive.authenticate(ENV['PIPEDRIVE_TOKEN'])
+
+rows.each do |row|
+  row_hash = Hash[headers.zip(row)]
+  org_name = "#{row_hash['Place']}, #{row_hash['State']}"
+
+  org = Pipedrive::Organization.find_or_create_by_name(org_name)
+
+  person = Pipedrive::Person.find_or_create_by_name(
+    row_hash['Contact full name'],
+    email: row_hash['Contact email'],
+    phone: row_hash['Contact phone'],
+    '962d049d401b8ae67533d4f401c75d6591017702' => row_hash['Contact title'],
+    org_id: org.id
+  )
+
+  deal = Pipedrive::Deal.create(
+    title: "#{org_name} deal",
+    user_id: KARI_USER_ID,
+    org_id: org.id,
+    person_id: person.id,
+    stage_id: PROSPECTING_STAGE_ID,
+    'e4f2d8aa3e6a8592296e64a8ea0114b9bdf0e657' => row_hash['Form URL']
+  )
+end
+
+puts "Done!"
