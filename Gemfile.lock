@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/ajb/pipedrive-ruby.git
-  revision: a5a365f5a2467def1067a31b745e718603e86c46
+  revision: 8a02d44a838beabb02957cf430ac6e0e3477a709
   specs:
     pipedrive-ruby (0.3.3)
       httparty

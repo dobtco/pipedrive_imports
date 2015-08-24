@@ -40,19 +40,25 @@ rows.each do |row|
 
   org = Pipedrive::Organization.find_or_create_by_name(org_name)
 
-  person = Pipedrive::Person.find_or_create_by_name(
-    row_hash['Contact full name'],
-    email: row_hash['Contact email'],
-    phone: row_hash['Contact phone'],
-    '962d049d401b8ae67533d4f401c75d6591017702' => row_hash['Contact title'],
-    org_id: org.id
-  )
+  if row_hash['Contact full name'] && row_hash['Contact full name'].length > 0
+    person = Pipedrive::Person.find_or_create_by_name(
+      row_hash['Contact full name'],
+      email: row_hash['Contact email'],
+      phone: row_hash['Contact phone'],
+      '962d049d401b8ae67533d4f401c75d6591017702' => row_hash['Contact title'],
+      org_id: org.id
+    )
+
+    person_id = person.id
+  else
+    person_id = nil
+  end
 
   deal = Pipedrive::Deal.create(
     title: "#{org_name} deal",
     user_id: KARI_USER_ID,
     org_id: org.id,
-    person_id: person.id,
+    person_id: person_id,
     stage_id: PROSPECTING_STAGE_ID,
     'e4f2d8aa3e6a8592296e64a8ea0114b9bdf0e657' => row_hash['Form URL']
   )
