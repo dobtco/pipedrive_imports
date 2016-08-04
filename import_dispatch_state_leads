@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require 'active_support/all'
+require 'csv'
+require 'dotenv'
+require 'pipedrive-ruby'
+
+Dotenv.load
+
+USER_ID = ENV['PIPEDRIVE_USER_ID'].presence || fail('No user ID set.')
+PROSPECTING_STAGE_ID = 64
+
+needs_columns = [
+  "Agency",
+  "Contact full name",
+  "Contact email",
+  "Contact phone",
+  "Contact title"
+]
+
+
+contents = File.read(ARGV[0])
+csv = CSV.parse(contents, headers: true)
+
+headers = csv.headers.to_a
+rows = csv.map(&:values_at).to_a
+
+missing_columns = needs_columns - headers
+
+if missing_columns.length > 0
+  fail "Missing columns: #{missing_columns.join(', ')}"
+end
+
+puts "Importing #{rows.length} rows..."
+
+Pipedrive.authenticate(ENV['PIPEDRIVE_TOKEN'])
+
+rows.map { |row| Hash[headers.zip(row)] }.group_by { |row| row['Agency'] }.each do |agency, group|
+  org = Pipedrive::Organization.find_or_create_by_name(agency)
+
+  deal = Pipedrive::Deal.create(
+    title: "#{agency} deal",
+    user_id: USER_ID,
+    org_id: org.id,
+    stage_id: PROSPECTING_STAGE_ID,
+    '1f9acce49b24c0b646e94be7d6967d58228d9ee8' => 'Drip Campaign - Email'
+  )
+
+  group.each do |row|
+    if row['Contact full name'] && row['Contact full name'].length > 0
+      person = Pipedrive::Person.find_or_create_by_name(
+        row['Contact full name'],
+        email: row['Contact email'],
+        phone: row['Contact phone'],
+        '962d049d401b8ae67533d4f401c75d6591017702' => row['Contact title'],
+        org_id: org.id
+      )
+
+      Pipedrive::Base.post(
+        "/deals/#{deal.id}/participants",
+        body: { person_id: person.id }
+      )
+    end
+  end
+end
+
+puts "Done!"
