@@ -1,4 +1,4 @@
-> Pipedrive has improved their import wizard, so these scripts are no longer necessary for most use cases.
+> **Pipedrive has improved their import wizard, so these scripts are no longer necessary for most use cases.**
 
 
 Pipedrive import scripts
